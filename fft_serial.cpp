@@ -134,8 +134,13 @@ void printFFTResults(const std::vector<std::complex<float>>& data, float samplin
 }
 
 int main() {
+
+    // The FFT converts a signal into frequencies contained in the signal
+    // Imagine an audio file, which is just a bunch of amplitude values over time (a signal)
+    // The FFT takes that as an input, and spits out what frequencies of sine waves are present in that window of time
+
     // Test with a simple signal
-    std::vector<float> input = {1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f};
+    std::vector<float> input = {1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 1.0f, 1.0f}; // imagine this is a slice of an audio file
     float sampling_freq = 1000.0f;  // 1 kHz sampling rate (if this was an audio recording, then 1k audio samples recorded per second)
                                     // in real audio this would be 44100 Hz normally
     size_t fft_size = 16;           // Use 16-point FFT (increased frequency resolution) (also known as 'bin size')
