@@ -3,9 +3,10 @@ CXX = g++
 MPICXX = mpic++
 CXXFLAGS = -std=c++14 -O3
 
-SERIAL= fft_serial
-PARALLEL= fft_parallel
-ALL= $(SERIAL) $(PARALLEL)
+SERIAL = lcs_serial
+PARALLEL = lcs_parallel
+DISTRIBUTED = lcs_distributed
+ALL= $(SERIAL) $(PARALLEL) $(DISTRIBUTED)
 
 all : $(ALL)
 
@@ -13,6 +14,9 @@ $(SERIAL): %: %.cpp
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
 $(PARALLEL): %: %.cpp
+	$(CXX) $(CXXFLAGS) -o $@ $<
+
+$(DISTRIBUTED): %: %.cpp
 	$(MPICXX) $(CXXFLAGS) -o $@ $<
 
 .PHONY : clean
