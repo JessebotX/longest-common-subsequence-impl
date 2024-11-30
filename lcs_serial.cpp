@@ -5,7 +5,7 @@
 
 using namespace std;
 
-pair<int, string> LCS(const string &X, const string &Y) {
+string LCS(const string &X, const string &Y) {
     int n = X.length();
     int m = Y.length();
     
@@ -23,9 +23,6 @@ pair<int, string> LCS(const string &X, const string &Y) {
         }
     }
     
-    // The length of the LCS is stored at dp[n][m]
-    int lcsLength = dp[n][m];
-    
     // Backtrack to find the actual LCS string
     string lcs = "";
     int i = n, j = m;
@@ -42,17 +39,16 @@ pair<int, string> LCS(const string &X, const string &Y) {
     }
     
     // Return both the length of the LCS and the LCS string
-    return {lcsLength, lcs};
+    return lcs;
 }
 
 int main() {
-    string X = "cadbrz";
-    string Y = "asbz";
+    string X = "cadbrzcarz";
+    string Y = "asbzcaz";
     
-    auto result = LCS(X, Y);
+    string result = LCS(X, Y);
     
-    cout << "Length of LCS is " << result.first << endl;
-    cout << "LCS is " << result.second << endl;
+    cout << "LCS is " << result << endl;
     
     return 0;
 }
