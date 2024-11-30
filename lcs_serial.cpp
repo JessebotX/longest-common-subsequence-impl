@@ -5,54 +5,54 @@
 
 using namespace std;
 
-string findLongestCommonSubstring(const string& s1, const string& s2) {
-    int m = s1.length();
-    int n = s2.length();
-
-    // Create a 2D Dynamic Programming table
-    vector<vector<int>> dp(m + 1, vector<int>(n + 1, 0));
-    int maxLength = 0;    // Length of longest common substring found
-    int endIdx = 0;       // End index of the longest common substring in s1
-
-    // Fill the DP table iteratively
-    for (int i = 1; i <= m; ++i) {
-        for (int j = 1; j <= n; ++j) {
-            if (s1[i - 1] == s2[j - 1]) {
+pair<int, string> LCS(const string &X, const string &Y) {
+    int n = X.length();
+    int m = Y.length();
+    
+    // Create a DP table to store lengths of longest common subsequence.
+    vector<vector<int>> dp(n + 1, vector<int>(m + 1, 0));
+    
+    // Fill the DP table
+    for (int i = 1; i <= n; ++i) {
+        for (int j = 1; j <= m; ++j) {
+            if (X[i - 1] == Y[j - 1]) {
                 dp[i][j] = dp[i - 1][j - 1] + 1;
-                if (dp[i][j] > maxLength) {
-                    maxLength = dp[i][j];
-                    endIdx = i - 1;  // Track the end index of the common substring in s1
-                }
             } else {
-                dp[i][j] = 0;
+                dp[i][j] = max(dp[i - 1][j], dp[i][j - 1]);
             }
         }
     }
-
-    // If no common substring was found, return an empty string
-    if (maxLength == 0) return "";
-
-    // Extract the longest common substring
-    return s1.substr(endIdx - maxLength + 1, maxLength);
+    
+    // The length of the LCS is stored at dp[n][m]
+    int lcsLength = dp[n][m];
+    
+    // Backtrack to find the actual LCS string
+    string lcs = "";
+    int i = n, j = m;
+    while (i > 0 && j > 0) {
+        if (X[i - 1] == Y[j - 1]) {
+            lcs = X[i - 1] + lcs;  // If characters match, add to the result
+            i--;
+            j--;
+        } else if (dp[i - 1][j] > dp[i][j - 1]) {
+            i--;  // Move up if the value above is greater
+        } else {
+            j--;  // Move left if the value to the left is greater
+        }
+    }
+    
+    // Return both the length of the LCS and the LCS string
+    return {lcsLength, lcs};
 }
 
 int main() {
-    string s1, s2;
+    string X = "cadbrz";
+    string Y = "asbz";
     
-    // Input strings
-    cout << "Enter the first string: ";
-    cin >> s1;
-    cout << "Enter the second string: ";
-    cin >> s2;
+    auto result = LCS(X, Y);
     
-    string result = findLongestCommonSubstring(s1, s2);
-    
-    // Output the result
-    if (result.empty()) {
-        cout << "No common substring found.\n";
-    } else {
-        cout << "Longest common substring: " << result << endl;
-    }
+    cout << "Length of LCS is " << result.first << endl;
+    cout << "LCS is " << result.second << endl;
     
     return 0;
 }
