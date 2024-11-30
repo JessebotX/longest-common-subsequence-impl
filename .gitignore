@@ -1,0 +1,5 @@
+fft_serial
+fft_parallel
+
+*.o
+*.obj
