@@ -1,12 +1,23 @@
+#include "core/cxxopts.h"
+#include "core/get_time.h"
+#include "core/utils.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <unordered_set>
+#include <functional>
+
+#define LCS_VERSION       "serial"
+#define DEFAULT_THREADS   1
+#define DEFAULT_STRING_X  "abcd"
+#define DEFAULT_STRING_Y  "acbadabc"
 
 using namespace std;
 
 vector<string> findLCS(const string &X, const string &Y) {
+    timer t1;
+    t1.start();
     int n = X.length();
     int m = Y.length();
     
@@ -60,21 +71,70 @@ vector<string> findLCS(const string &X, const string &Y) {
     
     // Return a vector that contains all LCS
     vector<string> result(lcsSet.begin(), lcsSet.end());
+    t1.stop();
+
     return result;
 }
 
-int main() {
-    string X = "abcd";
-    string Y = "acbad";
-    
-    // Find all LCS
-    vector<string> lcsResults = findLCS(X, Y);
-    
-    // Print all found LCS sequences
-    cout << "LCS sequences:" << endl;
-    for (const string &lcs : lcsResults) {
-        cout << lcs << endl;
+int main(int argc, char **argv) {
+    // Begin CLI parsing
+    cxxopts::Options options("lcs", "Find longest common subsequence.");
+    options.add_options(
+        "",
+        { 
+            { "t", "Number of threads", cxxopts::value<uint>()->default_value(DEFAULT_NUMBER_OF_THREADS) },
+            { "x", "1st sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_X) },
+            { "y", "2nd sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_Y) },
+        }
+    );
+    auto cli = options.parse(argc, argv);
+
+    uint nThreads = cli["t"].as<uint>();
+    if (LCS_VERSION == "serial" && nThreads != 1) { // error when serial version > 1 thread
+        printf("Error : Number of threads for serial version must be 1.\n");
+        return 1;
     }
+
+    string X = cli["x"].as<string>(); // sequence 1
+    string Y = cli["y"].as<string>(); // sequence 2
+    
+    // End of CLI parsing
+
+    printf("LCS Version : %s\n", LCS_VERSION);
+    printf("Number of threads : %zd\n", nThreads);
+    printf("Sequence X : %s\n", X.c_str());
+    printf("Sequence Y : %s\n", Y.c_str());
+    printf("Finding longest common subsequence...\n");
+
+    // Find all LCS
+    // --------------------------------------------------------------------------------
+    timer mainTimer;
+    mainTimer.start();
+
+    vector<string> lcsResults = findLCS(X, Y);
+
+    // --------------------------------------------------------------------------------
+    double timeTaken = mainTimer.stop();
+
+    // Print all found LCS sequences
+    size_t nSubsequences = lcsResults.size();
+    if (nSubsequences > 0) {
+        printf("LCS length : %zd\n", nSubsequences);
+
+        for (const string &lcs : lcsResults) {
+            printf("Length %zd subsequence : %s\n", nSubsequences, lcs.c_str());
+        }
+    } else {
+        printf("No subsequence found\n");
+    }
+
+    // Print thread data
+    printf("id, time_taken\n");
+    for (int id = 0; id < nThreads; id++) {
+        printf("%d, %.4f\n", id, timeTaken);
+    }
+
+    printf("Time taken (in seconds) : %.4f\n", timeTaken);
 
     return 0;
 }

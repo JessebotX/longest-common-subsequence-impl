@@ -7,17 +7,20 @@ SERIAL = lcs_serial
 PARALLEL = lcs_parallel
 DISTRIBUTED = lcs_distributed
 ALL= $(SERIAL) $(PARALLEL) $(DISTRIBUTED)
+COMMON= common/utils.h common/cxxopts.h common/get_time.h
 
 all : $(ALL)
 
-$(SERIAL): %: %.cpp
+$(SERIAL): %: %.cpp $(COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-$(PARALLEL): %: %.cpp
+$(PARALLEL): %: %.cpp $(COMMON)
 	$(CXX) $(CXXFLAGS) -o $@ $<
 
-$(DISTRIBUTED): %: %.cpp
+$(DISTRIBUTED): %: %.cpp $(COMMON)
 	$(MPICXX) $(CXXFLAGS) -o $@ $<
+
+$(COMMON):
 
 .PHONY : clean
 
