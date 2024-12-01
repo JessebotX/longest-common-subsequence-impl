@@ -15,7 +15,15 @@
 
 using namespace std;
 
-vector<string> findLCS(const string &X, const string &Y) {
+struct ThreadData {
+    int id;
+    double timeTaken;
+
+    ThreadData(int _id, double _timeTaken)
+        : id(_id), timeTaken(_timeTaken) {}
+};
+
+vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData) {
     timer t1;
     t1.start();
     int n = X.length();
@@ -68,10 +76,10 @@ vector<string> findLCS(const string &X, const string &Y) {
 
     // Start at endpoint and work backwards
     backtrack(n, m, "");
+    threadData.timeTaken = t1.stop();
     
     // Return a vector that contains all LCS
     vector<string> result(lcsSet.begin(), lcsSet.end());
-    t1.stop();
 
     return result;
 }
@@ -106,12 +114,18 @@ int main(int argc, char **argv) {
     printf("Sequence Y : %s\n", Y.c_str());
     printf("Finding longest common subsequence...\n");
 
-    // Find all LCS
     // --------------------------------------------------------------------------------
     timer mainTimer;
     mainTimer.start();
 
-    vector<string> lcsResults = findLCS(X, Y);
+    // Initialize thread data storage
+    vector<ThreadData> threadDataList;
+    for (int i = 0; i < nThreads; i++) {
+        threadDataList.push_back(ThreadData(i, 0.0));
+    }
+
+    // Find LCS
+    vector<string> lcsResults = findLCS(X, Y, threadDataList[0]);
 
     // --------------------------------------------------------------------------------
     double timeTaken = mainTimer.stop();
@@ -130,8 +144,8 @@ int main(int argc, char **argv) {
 
     // Print thread data
     printf("id, time_taken\n");
-    for (int id = 0; id < nThreads; id++) {
-        printf("%d, %.4f\n", id, timeTaken);
+    for (int i = 0; i < nThreads; i++) {
+        printf("%d, %.4f\n", threadDataList[i].id, threadDataList[i].timeTaken);
     }
 
     printf("Time taken (in seconds) : %.4f\n", timeTaken);
