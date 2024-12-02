@@ -1,7 +1,7 @@
 #compiler setup
 CXX = g++
 MPICXX = mpic++
-CXXFLAGS = -std=c++14 -O3
+CXXFLAGS = -std=c++14 -pthread -O3
 
 SERIAL = lcs_serial
 PARALLEL = lcs_parallel
