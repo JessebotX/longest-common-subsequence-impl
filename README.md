@@ -1,7 +1,1 @@
-Make fft_serial
-
-then
-
-./fft_serial
-
-Performs the FFT of the signal that is hard-coded in the main() function of fft_serial.cpp
+CMPT 431 Project for Longest Common Subsequence (LCS) Problem
