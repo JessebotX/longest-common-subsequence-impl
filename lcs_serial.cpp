@@ -11,7 +11,7 @@
 #define LCS_VERSION       "serial"
 #define DEFAULT_THREADS   1
 #define DEFAULT_STRING_X  "abcd"
-#define DEFAULT_STRING_Y  "acbadabc"
+#define DEFAULT_STRING_Y  "acbad"
 
 using namespace std;
 
