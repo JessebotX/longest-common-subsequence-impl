@@ -10,8 +10,9 @@
 
 #define LCS_VERSION       "serial"
 #define DEFAULT_THREADS   1
-#define DEFAULT_STRING_X  "abcd"
-#define DEFAULT_STRING_Y  "acbad"
+#define DEFAULT_STRING_X std::string(10000, 'A')
+#define DEFAULT_STRING_Y std::string(10000, 'A')
+
 
 using namespace std;
 
@@ -109,7 +110,7 @@ int main(int argc, char **argv) {
     // End of CLI parsing
 
     printf("LCS Version : %s\n", LCS_VERSION);
-    printf("Number of threads : %zd\n", nThreads);
+    printf("Number of threads : %u\n", nThreads);
     printf("Sequence X : %s\n", X.c_str());
     printf("Sequence Y : %s\n", Y.c_str());
     printf("Finding longest common subsequence...\n");
@@ -133,11 +134,10 @@ int main(int argc, char **argv) {
     // Print all found LCS sequences
     size_t nSubsequences = lcsResults.size();
     if (nSubsequences > 0) {
-        size_t lcsLength = lcsResults[0].size();
-        printf("LCS length : %zd\n", lcsLength);
+        printf("LCS length : %zd\n", nSubsequences);
 
         for (const string &lcs : lcsResults) {
-            printf("Length %zd subsequence : %s\n", lcsLength, lcs.c_str());
+            printf("Length %zd subsequence : %s\n", nSubsequences, lcs.c_str());
         }
     } else {
         printf("No subsequence found\n");

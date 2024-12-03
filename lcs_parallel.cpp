@@ -11,8 +11,8 @@
 
 #define LCS_VERSION       "parallel"
 #define DEFAULT_THREADS   3
-#define DEFAULT_STRING_X  "abcd"
-#define DEFAULT_STRING_Y  "acbad"
+#define DEFAULT_STRING_X std::string(10000, 'A')
+#define DEFAULT_STRING_Y std::string(10000, 'A')
 
 using namespace std;
 
@@ -203,7 +203,7 @@ int main(int argc, char **argv) {
     // End of CLI parsing
 
     printf("LCS Version : %s\n", LCS_VERSION);
-    printf("Number of threads : %zd\n", nThreads);
+    printf("Number of threads : %u\n", nThreads);
     printf("Sequence X : %s\n", X.c_str());
     printf("Sequence Y : %s\n", Y.c_str());
     printf("Finding longest common subsequence...\n");
