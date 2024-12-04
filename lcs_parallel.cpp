@@ -28,17 +28,27 @@ struct ThreadData {
 void getCellsToCalculate(vector<int>& vec, vector<vector<int>>& dp, int rows, int cols, int thread_id, uint num_threads, int diag) {
 
     // Find start position of the diagonal
+    // (all threads compute the same number here)
     int start_row = std::max(0, diag - (cols - 1));
     int start_col = std::min(diag, cols - 1);  
     
+    // number of elements in this diagonal 
+    // (all threads calculate the same number here)
     int elements_in_diagonal = std::min(start_col + 1, rows - start_row);
 
+    // number of threads that get an extra cell to calculate 
+    // (all threads calculate same num here)
     int z = elements_in_diagonal % num_threads;
 
+    // min number of cells each thread gets 
+    // (all threads calculate same number here)
     int base_count = elements_in_diagonal / num_threads;
 
+    // the starting index along the current diagonal that the current thread needs to start at
+    // this is the only number that is uniquely computed per thread
     int start_idx = std::min(thread_id, z) * (base_count + 1) + std::max(0, thread_id - z) * (base_count);
 
+    // put the results in the vector
     vec[0] = start_row + start_idx + 1;
     vec[1] = start_col - start_idx + 1;
     vec[2] = base_count + (thread_id < (z) ? 1 : 0);
@@ -64,6 +74,12 @@ vector<string> findLCS(const string &X, const string &Y, vector<ThreadData> &thr
         t.start();
         timer t2;
 
+
+        // stores info for the cells this thread needs to calculate on the current diagonal.
+        // updated once per diagonal.
+        // the first element is the starting row.
+        // the second element is the starting column.
+        // the third element is how many elements they need to calculate for the current diagonal.
         vector<int> cellsToCalculate(3);
         int x;
         int y;
@@ -72,9 +88,12 @@ vector<string> findLCS(const string &X, const string &Y, vector<ThreadData> &thr
             // fill cellsToCalculate with the cells this thread needs to calculate
             getCellsToCalculate(cellsToCalculate, dp, n, m, thread_id, num_threads, i);
             
+            // store the vector values in variables so its faster to read them below
+            // i have no idea if that is actually faster but it seems right lol
             x = cellsToCalculate[0];
             y = cellsToCalculate[1];
             z = cellsToCalculate[2];
+            // fill dp table
             for (int j = 0; j < z; j++) {
                 if (X[x-1] == Y[y-1]) {
                     dp[x][y] = dp[x - 1][y - 1] + 1;
@@ -84,10 +103,12 @@ vector<string> findLCS(const string &X, const string &Y, vector<ThreadData> &thr
                 x += 1;
                 y -= 1;
             }
+            // total time this thread waited at the barrier
             t2.start();
             barrier.wait();
             threadData[thread_id].timeWaitedAtBarrier += t2.stop();
         }
+        // total time this thread spent computing DP table
         threadData[thread_id].timeTaken = t.stop();
     };
     
