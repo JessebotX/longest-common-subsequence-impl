@@ -1,5 +1,6 @@
 lcs_serial
 lcs_parallel
+lsc_parallel_test
 lcs_distributed
 
 .vscode/

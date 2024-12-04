@@ -7,8 +7,9 @@
 #include <algorithm>
 #include <unordered_set>
 #include <functional>
+#include <thread>
 
-#define LCS_VERSION       "serial"
+#define LCS_VERSION       "parallel"
 #define DEFAULT_THREADS   1
 #define DEFAULT_STRING_X  "abcd"
 #define DEFAULT_STRING_Y  "acbad"
@@ -23,15 +24,95 @@ struct ThreadData {
         : id(_id), timeTaken(_timeTaken) {}
 };
 
-vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData) {
+mutex print_mutex;
+
+vector<string> findLCS(const string &X, const string &Y, vector<ThreadData> &threadData, int num_threads) {
     timer t1;
     t1.start();
     int n = X.length();
     int m = Y.length();
     
+    CustomBarrier barrier(num_threads);
+    uint num_diagonals = n + m - 1;
+
     // Create a DP table to store lengths of longest common subsequence
-    vector<vector<int>> dp(n + 1, vector<int>(m + 1, 0));
+    vector<vector<int>> dp(n + 1, vector<int>(m + 1));
+
+    auto threadWorker = [&](int thread_id) {
+        timer t;
+        t.start();
+
+        vector<int> cellsToCalculate(3);
+        int x;
+        int y;
+        int z;
+        int start_row;
+        int start_col;
+        int elements_in_diagonal;
+        int base_count;
+        int start_idx;
+        
+        start_row = 0;
+        start_col = 0;
+        for (int i = 0; i < m; i++) {
+            elements_in_diagonal = min(i + 1, n);
+            z = elements_in_diagonal % num_threads;
+            base_count = elements_in_diagonal / num_threads;
+            start_idx = std::min(thread_id, z) * (base_count + 1) + std::max(0, thread_id - z) * (base_count);
+            x = start_idx + 1;
+            y = i - start_idx + 1;
+            z = base_count + (thread_id < (z) ? 1 : 0);
+            for (int j = 0; j < z; j++) {
+                if (X[x-1] == Y[y-1]) {
+                    dp[x][y] = dp[x - 1][y - 1] + 1;
+                } else {
+                    dp[x][y] = max(dp[x - 1][y], dp[x][y - 1]);
+                }
+                x += 1;
+                y -= 1;
+            }
+            barrier.wait();
+        }
+
+        start_row = 1;
+        start_col = m - 1;
+        for (int i = m; i < num_diagonals; i++) {
+            start_row = i - m + 1;
+            elements_in_diagonal = min(m, n - start_row);
+            z = elements_in_diagonal % num_threads;
+            base_count = elements_in_diagonal / num_threads;
+            start_idx = std::min(thread_id, z) * (base_count + 1) + std::max(0, thread_id - z) * (base_count);
+            x = start_row + start_idx + 1;
+            y = m - start_idx;
+            z = base_count + (thread_id < (z) ? 1 : 0);
+            for (int j = 0; j < z; j++) {
+                if (X[x-1] == Y[y-1]) {
+                    dp[x][y] = dp[x - 1][y - 1] + 1;
+                } else {
+                    dp[x][y] = max(dp[x - 1][y], dp[x][y - 1]);
+                }
+                x += 1;
+                y -= 1;
+            }
+            barrier.wait();
+        }
+
+        threadData[thread_id].timeTaken = t.stop();
+
+    };
     
+    vector<thread> threads;
+
+    // start and stop threads
+    for (uint i = 0; i < num_threads; i++ ) {
+        threads.emplace_back(threadWorker, i);
+    }
+
+    for (auto &t : threads) {
+        t.join();
+    }
+
+    /*
     // Fill the DP table
     // Want to find dp[n][m]
     for (int i = 1; i <= n; ++i) {
@@ -48,6 +129,7 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
             }
         }
     }
+    */
 
     // Set to store unique LCS
     unordered_set<string> lcsSet;
@@ -75,8 +157,8 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
     };
 
     // Start at endpoint and work backwards
-    // backtrack(n, m, "");
-    threadData.timeTaken = t1.stop();
+    //backtrack(n, m, "");
+    //threadData[thread_id].timeTaken = t1.stop();
     
     // Return a vector that contains all LCS
     vector<string> result(lcsSet.begin(), lcsSet.end());
@@ -109,7 +191,7 @@ int main(int argc, char **argv) {
     // End of CLI parsing
 
     printf("LCS Version : %s\n", LCS_VERSION);
-    printf("Number of threads : %zd\n", nThreads);
+    printf("Number of threads : %u\n", nThreads);
     printf("Sequence X : %s\n", X.c_str());
     printf("Sequence Y : %s\n", Y.c_str());
     printf("Finding longest common subsequence...\n");
@@ -124,8 +206,9 @@ int main(int argc, char **argv) {
         threadDataList.push_back(ThreadData(i, 0.0));
     }
 
+    
     // Find LCS
-    vector<string> lcsResults = findLCS(X, Y, threadDataList[0]);
+    vector<string> lcsResults = findLCS(X, Y, threadDataList, nThreads);
 
     // --------------------------------------------------------------------------------
     double timeTaken = mainTimer.stop();
