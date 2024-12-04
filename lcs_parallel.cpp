@@ -163,6 +163,7 @@ int main(int argc, char **argv) {
 
     printf("LCS Version : %s\n", LCS_VERSION);
     printf("Number of threads : %u\n", nThreads);
+    printf("Number of threads : %u\n", nThreads);
     printf("Sequence X : %s\n", X.c_str());
     printf("Sequence Y : %s\n", Y.c_str());
     printf("Finding longest common subsequence...\n");
