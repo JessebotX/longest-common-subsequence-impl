@@ -137,10 +137,11 @@ int main(int argc, char **argv) {
     // Print all found LCS sequences
     size_t nSubsequences = lcsResults.size();
     if (nSubsequences > 0) {
-        printf("LCS length : %zd\n", nSubsequences);
+        size_t lenSubsequence = lcsResults[0].size();
+        printf("LCS length : %zd\n", lenSubsequence);
 
         for (const string &lcs : lcsResults) {
-            printf("Length %zd subsequence : %s\n", nSubsequences, lcs.c_str());
+            printf("Length %zd subsequence : %s\n", lenSubsequence, lcs.c_str());
         }
     } else {
         printf("No subsequence found\n");
