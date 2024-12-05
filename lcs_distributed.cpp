@@ -377,12 +377,12 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
 
     
     function<void(int, int, string)> backtrack = [&](int i, int j, string currentLCS) {
-        printf("entering backtrack at %d %d DP: %d\n", i, j, dp[i][j]);
+        // printf("entering backtrack at %d %d DP: %d\n", i, j, dp[i][j]);
         if (i == 0 || j == 0) {
             // If we've found a valid LCS that is non-empty, insert it
             if (!currentLCS.empty()) {
                 lcsSet.insert(currentLCS);
-                printf("inserted %s\n", currentLCS.c_str());
+                // printf("inserted %s\n", currentLCS.c_str());
             }
             return;
         }
@@ -393,11 +393,11 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
         } else {
             // If characters do not match, move in both directions (up and left)
             if (dp[i - 1][j] == dp[i][j]) {
-                printf("backtrack %d %d %s\n", i-1, j, currentLCS.c_str());
+                // printf("backtrack %d %d %s\n", i-1, j, currentLCS.c_str());
                 backtrack(i - 1, j, currentLCS);
             }
             if (dp[i][j - 1] == dp[i][j]) {
-                printf("backtrack %d %d %s\n", i, j-1, currentLCS.c_str());
+                // printf("backtrack %d %d %s\n", i, j-1, currentLCS.c_str());
                 backtrack(i, j - 1, currentLCS);
             }
         }
@@ -406,7 +406,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
     processData.timeTaken = t1.stop();
 
     if (world_rank == 0) {
-        printf("backtrack %d %d %s\n", n, m, "");
+        // printf("backtrack %d %d %s\n", n, m, "");
         backtrack(n, m, "");
         if (lcsSet.empty()) {
             return {};  // Return an empty vector if no LCS exists
