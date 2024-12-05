@@ -9,7 +9,7 @@
 #include <functional>
 
 #define LCS_VERSION       "serial"
-#define DEFAULT_THREADS   1
+#define DEFAULT_NUMBER_OF_THREADS   1
 #define DEFAULT_STRING_X std::string(10000, 'A')
 #define DEFAULT_STRING_Y std::string(10000, 'A')
 
@@ -56,8 +56,10 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
     // Helper function to backtrack and find all LCS
     function<void(int, int, string)> backtrack = [&](int i, int j, string currentLCS) {
         if (i == 0 || j == 0) {
-            // If we reach the top or left boundary of DP table, we have found an LCS
-            lcsSet.insert(currentLCS);
+            // If we've found a valid LCS that is non-empty, insert it
+            if (!currentLCS.empty()) {
+                lcsSet.insert(currentLCS);
+            }
             return;
         }
         
@@ -76,7 +78,8 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
     };
 
     // Start at endpoint and work backwards
-    // backtrack(n, m, "");
+    
+    backtrack(n, m, "");
     threadData.timeTaken = t1.stop();
     
     // Return a vector that contains all LCS
@@ -91,7 +94,7 @@ int main(int argc, char **argv) {
     options.add_options(
         "",
         { 
-            { "t", "Number of threads", cxxopts::value<uint>()->default_value(DEFAULT_NUMBER_OF_THREADS) },
+            { "t", "Number of threads", cxxopts::value<uint>()->default_value(std::to_string(DEFAULT_NUMBER_OF_THREADS)) },
             { "x", "1st sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_X) },
             { "y", "2nd sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_Y) },
         }
