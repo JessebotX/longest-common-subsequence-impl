@@ -3,9 +3,9 @@
 #include <stdio.h>
 
 #define LCS_VERSION         "distributed"
-#define DEFAULT_STRING_X    "abcd"
-#define DEFAULT_STRING_Y    "acbad"
-#define PRINT_TASK          1
+#define DEFAULT_STRING_X  "GACAT"
+#define DEFAULT_STRING_Y  "ACCGATCG"
+#define PRINT_TASK          0
 
 struct ProcessData {
     int id;
@@ -64,7 +64,7 @@ void getCellsToCalculate(CellsToCalculate& cellsToCalculate,
     cellsToCalculate.elementsInDiagonal = elements_in_diagonal;
 }
 
-void findLCS(const string& X, const string& Y, ProcessData& processData, int world_rank, int world_size) {
+vector<string> findLCS(const string& X, const string& Y, ProcessData& processData, int world_rank, int world_size) {
     timer t1;
     t1.start();
     // --------------------------------------------------------------
@@ -72,18 +72,15 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
     int m = Y.length();
     uint num_diagonals = n + m - 1;
 
-    vector<vector<int>> dp(n + 1, vector<int>(m + 1));
-
-    // // First: broadcast 1 sequence to all nodes
-    // if (X[0] == Y[0]) {
-    //     dp[1][1] = 1;
-    // } else {
-    //     dp[0][0] = 0;
-    // }
+    vector<vector<int>> dp(n + 1, vector<int>(m + 1, -100));
+    // keep row 0 and column 0 equal to 0, the rest -100 (using impossible value as empty marker)
+    std::fill(dp[0].begin(), dp[0].end(), 0);
+    for(int i = 0; i < n + 1; i++) {
+        dp[i][0] = 0;
+    }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
-    //vector<int> cellsToCalculate(3);
     CellsToCalculate cellsToCalculate;
     int x, y, nElements;
 
@@ -141,8 +138,12 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
         std::fill(lastCellSend, lastCellSend + 3, 0);
         std::fill(firstCellSend, firstCellSend + 3, 0);
         
+        // This section of code is used to determine whether or not all the processes
+        // have actual work to do. For instance, in diag 2 there may not be enough elements
+        // for 8 processes, etc.
+        //
+        // In this scenario we skip trying to make these inactive processes send/recv
         int world_size_2;
-
         if (elementsInDiagonal < world_size) {
             world_size_2 = elementsInDiagonal;
         } else {
@@ -300,17 +301,109 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
 
     // Send data back to process 0
 
+    int* rowReceive = new int[m];
+    int* rowSend = new int[m];
+
+    // Reconstruct dp at process 0
+
+    // for each row i
+    for (int i = 2; i < n+1; i++) {
+        
+        // if we are the root process, receive all rows
+        if(world_rank == 0) {
+            for (int j = 1; j < world_size; j++) {
+                // receive row i from that process j
+                printf("Receiving\n");
+                MPI_Recv(
+                    rowReceive,
+                    m,
+                    MPI_INT,
+                    j,
+                    0,
+                    MPI_COMM_WORLD,
+                    MPI_STATUS_IGNORE
+                );
+                // swap out blank cells in our DP table for the once we just received
+                for (int k = 0; k < m; k++) {
+                    //printf("looking at dp[%d][%d]\n", i, k+1);
+                    if (dp[i][k+1] == -100) {
+                        dp[i][k+1] = rowReceive[k];
+                    }
+                }
+            }
+        // if we arent the root process, send row i
+        } else {
+            
+            std::copy(dp[i].begin(), dp[i].end(), rowSend);
+
+            MPI_Send( 
+                rowSend,//dp is a vector, not an int arr anymore
+                m,
+                MPI_INT,
+                0, // this is destination right?? it should be
+                0,
+                MPI_COMM_WORLD
+            );
+            
+        }
+    }
+    delete[] rowSend;
+    delete[] rowReceive;
+
+    
+    // PRINT DP TABLE
+    if(world_rank == PRINT_TASK) {
+        for (int i = 0; i < dp.size(); i ++ ) {
+            for (int j = 0; j < dp[0].size(); j++ ) {
+                printf("%5d ", dp[i][j]);
+            }
+            printf("\n");
+        }
+    }
+    
 
     unordered_set<string> lcsSet;
 
-    // --------------------------------------------------------------
+
+    function<void(int, int, string)> backtrack = [&](int i, int j, string currentLCS) {
+        if (i == 0 || j == 0) {
+            // If we've found a valid LCS that is non-empty, insert it
+            if (!currentLCS.empty()) {
+                lcsSet.insert(currentLCS);
+            }
+            return;
+        }
+        
+        if (X[i - 1] == Y[j - 1]) {
+            // If characters match, add the character to the LCS and move diagonally
+            backtrack(i - 1, j - 1, X[i - 1] + currentLCS);
+        } else {
+            // If characters do not match, move in both directions (up and left)
+            if (dp[i - 1][j] == dp[i][j]) {
+                backtrack(i - 1, j, currentLCS);
+            }
+            if (dp[i][j - 1] == dp[i][j]) {
+                backtrack(i, j - 1, currentLCS);
+            }
+        }
+    };
+
     processData.timeTaken = t1.stop();
 
     if (world_rank == 0) {
-        printf("Last element of DP table: %d\n", dp[n][m]);
+        backtrack(n, m, "");
+        if (lcsSet.empty()) {
+            return {};  // Return an empty vector if no LCS exists
+        }
+        vector<string> result(lcsSet.begin(), lcsSet.end());
+        return result;
+    } else {
+        return {};
     }
 
-    return;
+    
+
+    
 }
 
 int main(int argc, char** argv) {
@@ -353,7 +446,7 @@ int main(int argc, char** argv) {
 
     ProcessData processData(world_rank, 0.0);
 
-    findLCS(X, Y, processData, world_rank, world_size);
+    vector<string> lcsResults = findLCS(X, Y, processData, world_rank, world_size);
 
     // ------------------------------------------------------------
     double timeTaken = mainTimer.stop();
@@ -361,13 +454,32 @@ int main(int argc, char** argv) {
     MPI_Barrier(MPI_COMM_WORLD);
     // ------ BEGIN print ------
 
+    if (world_rank == 0) {
+        size_t nSubsequences = lcsResults.size();
+        if (nSubsequences > 0) {
+            size_t lcsLength = lcsResults[0].size();
+            printf("LCS length : %zd\n", lcsLength);
+
+            for (const string &lcs : lcsResults) {
+                printf("Length %zd subsequence : %s\n", lcsLength, lcs.c_str());
+            }
+        } else {
+            printf("No subsequence found\n");
+        }
+    }
+
     // Stats per process
     if (world_rank == 0) {
         printf("id, time_taken\n");        
     }
     MPI_Barrier(MPI_COMM_WORLD);
 
+    
+
     printf("%d, %.4f\n", world_rank, processData.timeTaken);
+
+    
+    
 
     // Total time taken
     MPI_Barrier(MPI_COMM_WORLD);
