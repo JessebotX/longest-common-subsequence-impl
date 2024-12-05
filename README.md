@@ -21,12 +21,6 @@ Which will create the following:
 - lcs_parallel: thread-based implementation of LCS
 - lcs_distributed: MPI implementation of LCS
 
-To construct input strings for the programs run:
-
-    python3 generate_input.py
-
-Which creates input.csv
-
 Running
 -------
 
@@ -52,3 +46,6 @@ Testing
 
 Test scripts are provided for convenience.
 
+Run on the cluster with sbatch <batch file name>
+
+i.e. sbatch test-slurm-mpi-2.sh
