@@ -1,5 +1,7 @@
 # CMPT 431 Project for Longest Common Subsequence (LCS) Problem
 
+Testing is done on the SFU cluster/slurm workload manager.
+
 Building
 --------
 
@@ -28,17 +30,15 @@ Which creates input.csv
 Running
 -------
 
-All executables support the same flags.
-
     -t <number of threads>
     -x <1st sequence string>
     -y <2nd sequence string>
 
-- When no flags are provided, default values will be used.
+- lcs_distributed does not implement -t
 - lcs_serial -t only accepts 1
-- lcs_distributed ignores -t
 - x and y sequences accept symbols and any-case letters
   - lowercase and uppercase are treated as separate characters 
+- When no flags are provided, default values will be used.
 
 Examples:
 
@@ -46,7 +46,6 @@ Examples:
     ./lcs_serial      -x abcd -y acbad
     ./lcs_serial      -t 1    -x hello
     ./lcs_parallel    -t 4    -x abcd  -y abcde
-    ./lcs_distributed -x abde -y abcde
 
 Testing
 -------

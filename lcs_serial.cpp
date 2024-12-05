@@ -49,6 +49,7 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
             }
         }
     }
+    threadData.timeTaken = t1.stop();
 
     // Set to store unique LCS
     unordered_set<string> lcsSet;
@@ -80,7 +81,6 @@ vector<string> findLCS(const string &X, const string &Y, ThreadData &threadData)
     // Start at endpoint and work backwards
     
     backtrack(n, m, "");
-    threadData.timeTaken = t1.stop();
     
     // Return a vector that contains all LCS
     vector<string> result(lcsSet.begin(), lcsSet.end());
@@ -137,10 +137,11 @@ int main(int argc, char **argv) {
     // Print all found LCS sequences
     size_t nSubsequences = lcsResults.size();
     if (nSubsequences > 0) {
-        printf("LCS length : %zd\n", nSubsequences);
+        size_t lenSubsequence = lcsResults[0].size();
+        printf("LCS length : %zd\n", lenSubsequence);
 
         for (const string &lcs : lcsResults) {
-            printf("Length %zd subsequence : %s\n", nSubsequences, lcs.c_str());
+            printf("Length %zd subsequence : %s\n", lenSubsequence, lcs.c_str());
         }
     } else {
         printf("No subsequence found\n");
@@ -149,10 +150,10 @@ int main(int argc, char **argv) {
     // Print thread data
     printf("id, time_taken\n");
     for (int i = 0; i < nThreads; i++) {
-        printf("%d, %.4f\n", threadDataList[i].id, threadDataList[i].timeTaken);
+        printf("%d, %g\n", threadDataList[i].id, threadDataList[i].timeTaken);
     }
 
-    printf("Time taken (in seconds) : %.4f\n", timeTaken);
+    printf("Time taken (in seconds) : %g\n", timeTaken);
 
     return 0;
 }
