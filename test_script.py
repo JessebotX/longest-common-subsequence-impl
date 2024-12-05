@@ -17,8 +17,6 @@ def run_lcs_commands(input_csv, output_file):
                 x = row[0]
                 y = row[1]
 
-                out_file.write(f"Running commands for pair {idx}: x = {x}, y = {y}\n")
-
                 # serial
                 run_command(["./lcs_serial", "-t", "1", "-x", x, "-y", y], out_file)
 
