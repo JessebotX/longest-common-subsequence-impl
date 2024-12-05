@@ -5,7 +5,7 @@ import csv
 
 # Generate a random string of the given length.
 def generate_random_string(length):
-    return "".join(random.choices(string.ascii_letters, k=length))
+    return "".join(random.choices("actg", k=length))
 
 
 # Generate pairs of random strings with specific lengths.
