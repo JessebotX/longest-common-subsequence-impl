@@ -313,7 +313,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
         if(world_rank == 0) {
             for (int j = 1; j < world_size; j++) {
                 // receive row i from that process j
-                printf("Receiving\n");
+                // printf("Receiving\n");
                 MPI_Recv(
                     rowReceive,
                     m,
@@ -326,7 +326,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
                 // swap out blank cells in our DP table for the once we just received
                 for (int k = 0; k < m; k++) {
                     //printf("looking at dp[%d][%d]\n", i, k+1);
-                    if (dp[i][k+1] == -100) {
+                    if (dp[i][k+1] < rowReceive[k]) {
                         dp[i][k+1] = rowReceive[k];
                     }
                 }
@@ -334,7 +334,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
         // if we arent the root process, send row i
         } else {
             
-            std::copy(dp[i].begin(), dp[i].end(), rowSend);
+            std::copy(dp[i].begin() + 1, dp[i].end(), rowSend);
 
             MPI_Send( 
                 rowSend,//dp is a vector, not an int arr anymore
@@ -353,23 +353,36 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
     
     // PRINT DP TABLE
     if(world_rank == PRINT_TASK) {
+        printf("        ");
+        for(int i = 0; i < m; i++) {
+            printf("%3c ", Y[i]);
+        }
+        printf("\n");
         for (int i = 0; i < dp.size(); i ++ ) {
+            if(i > 0) {
+                printf("%3c ", X[i-1]);
+            } else {
+                printf("    ");
+            }
             for (int j = 0; j < dp[0].size(); j++ ) {
-                printf("%5d ", dp[i][j]);
+                printf("%3d ", dp[i][j]);
             }
             printf("\n");
+            
         }
     }
     
 
     unordered_set<string> lcsSet;
 
-
+    
     function<void(int, int, string)> backtrack = [&](int i, int j, string currentLCS) {
+        printf("entering backtrack at %d %d DP: %d\n", i, j, dp[i][j]);
         if (i == 0 || j == 0) {
             // If we've found a valid LCS that is non-empty, insert it
             if (!currentLCS.empty()) {
                 lcsSet.insert(currentLCS);
+                printf("inserted %s\n", currentLCS.c_str());
             }
             return;
         }
@@ -380,9 +393,11 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
         } else {
             // If characters do not match, move in both directions (up and left)
             if (dp[i - 1][j] == dp[i][j]) {
+                printf("backtrack %d %d %s\n", i-1, j, currentLCS.c_str());
                 backtrack(i - 1, j, currentLCS);
             }
             if (dp[i][j - 1] == dp[i][j]) {
+                printf("backtrack %d %d %s\n", i, j-1, currentLCS.c_str());
                 backtrack(i, j - 1, currentLCS);
             }
         }
@@ -391,6 +406,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
     processData.timeTaken = t1.stop();
 
     if (world_rank == 0) {
+        printf("backtrack %d %d %s\n", n, m, "");
         backtrack(n, m, "");
         if (lcsSet.empty()) {
             return {};  // Return an empty vector if no LCS exists
