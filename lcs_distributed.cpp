@@ -351,7 +351,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
     delete[] rowReceive;
 
     
-    // PRINT DP TABLE
+    /* PRINT DP TABLE
     if(world_rank == PRINT_TASK) {
         for (int i = 0; i < dp.size(); i ++ ) {
             for (int j = 0; j < dp[0].size(); j++ ) {
@@ -359,7 +359,7 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
             }
             printf("\n");
         }
-    }
+    } */
     
 
     unordered_set<string> lcsSet;
@@ -400,9 +400,6 @@ vector<string> findLCS(const string& X, const string& Y, ProcessData& processDat
     } else {
         return {};
     }
-
-    
-
     
 }
 
@@ -478,8 +475,7 @@ int main(int argc, char** argv) {
 
     printf("%d, %.4f\n", world_rank, processData.timeTaken);
 
-    
-    
+
 
     // Total time taken
     MPI_Barrier(MPI_COMM_WORLD);
