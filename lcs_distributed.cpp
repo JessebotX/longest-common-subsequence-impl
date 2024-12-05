@@ -2,10 +2,10 @@
 #include <mpi.h>
 #include <stdio.h>
 
-#define LCS_VERSION       "distributed"
-#define DEFAULT_PROCESSES   1
-#define DEFAULT_STRING_X  "abcd"
-#define DEFAULT_STRING_Y  "acbad"
+#define LCS_VERSION         "distributed"
+#define DEFAULT_STRING_X    "abcd"
+#define DEFAULT_STRING_Y    "acbad"
+#define PRINT_TASK          1
 
 struct ProcessData {
     int id;
@@ -26,7 +26,7 @@ struct CellsToCalculate {
         : startingRow(0), startingColumn(0), 
         numElements(0), minPerProcess(0), elementsInDiagonal(0)
     {}
-}
+};
 
 using namespace std;
 
@@ -72,38 +72,44 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
     int m = Y.length();
     uint num_diagonals = n + m - 1;
 
-    //vector<vector<int>> dp(n + 1, vector<int>(m + 1));
-    int** dp = new int*[n + 1];
-    for (int i = 0; i < (n + 1); i++) {
-        dp[i] = new int[m + 1];
-    }
+    vector<vector<int>> dp(n + 1, vector<int>(m + 1));
 
-    // First: broadcast 1 sequence to all nodes
-    if (X[0] == Y[0]) {
-        dp[0][0] = 1;
-    } else {
-        dp[0][0] = 0;
-    }
+    // // First: broadcast 1 sequence to all nodes
+    // if (X[0] == Y[0]) {
+    //     dp[1][1] = 1;
+    // } else {
+    //     dp[0][0] = 0;
+    // }
 
     MPI_Barrier(MPI_COMM_WORLD);
 
     //vector<int> cellsToCalculate(3);
-    CellsToCalculate cellsToCalculate();
+    CellsToCalculate cellsToCalculate;
     int x, y, nElements;
 
-    for (int i = 1; i < num_diagonals; i++) {   
+    for (int i = 0; i < num_diagonals; i++) {   
 
         getCellsToCalculate(cellsToCalculate, n, m, world_rank, world_size, i);
-        x = cellsToCalculate.startingColumn;
-        y = cellsToCalculate.startingRow;
+        x = cellsToCalculate.startingRow;
+        y = cellsToCalculate.startingColumn;
         int initialX = x;
         int initialY = y;
         int finalX = x + (cellsToCalculate.numElements - 1);
         int finalY = y - (cellsToCalculate.numElements - 1);
         // num elements to process (always minElements || minElements + 1)
-        nElements = cellsToCalculate.numElements;
-        minElements = cellsToCalculate.minElementsPerProcess;
-        elementsInDiagonal = cellsToCalculate.elementsInDiagonal;
+        int nElements = cellsToCalculate.numElements;
+        int minElements = cellsToCalculate.minPerProcess;
+        int elementsInDiagonal = cellsToCalculate.elementsInDiagonal;
+
+        // if (world_rank == PRINT_TASK) {
+        //     printf("\n");
+        //     printf("Process: %d\n", world_rank);
+        //     printf("(diag, x, y): (%d, %d, %d)\n", i, x, y);
+        //     printf("(finalX, finalY): (%d, %d)\n", finalX, finalY);
+        //     printf("nElements: %d\n", nElements);
+        //     printf("elementsInDiagonal: %d\n", elementsInDiagonal);
+            
+        // }
 
         // guaranteed to have the values we need at this point
         for (int j = 0; j < nElements; j++) {
@@ -116,6 +122,7 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
             y -= 1;
         }
 
+        // if (world_rank == PRINT_TASK) printf("SYNCHRONIZING\n");
         // SYNCHRONIZE
         // Send first cell computed to previous process
         // Send last cell computed to next process
@@ -124,130 +131,170 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
         // index 0: row
         // index 1: col
         // index 2: DP value
+        // if (world_rank == PRINT_TASK) printf("CREATE INT[3]\n");
         int *lastCellReceive  = new int[3];
         int *firstCellReceive = new int[3];
         int *lastCellSend     = new int[3];
         int *firstCellSend    = new int[3];
-
-        if (world_rank % 2 == 0) {                                          // even rank
-            if (world_rank < world_size - 1) {                              // not last process
-                // MPI_Send last cell to world_rank + 1
-                lastCellSend[0] = finalX;
-                lastCellSend[1] = finalY;
-                lastCellSend[2] = dp[finalX][finalY];
-                MPI_Send(
-                    lastCellSend,    //data
-                    3,               //count
-                    MPI_INT,         //datatype,
-                    world_rank+1,    //destination,
-                    0,               //tag
-                    MPI_COMM_WORLD   //comm
-                );
-                // MPI_Recv first cell from world_rank + 1
-                MPI_Recv(
-                    firstCellReceive, //data,
-                    3,                       //count,
-                    MPI_INT,                 //datatype,
-                    world_rank+1,            //source,
-                    0,            //tag,
-                    MPI_COMM_WORLD,   //communicator,
-                    MPI_STATUS_IGNORE //status
-                );
-            }
-            if (world_rank > 0) {                                           // not first process
-                // MPI_Recv last cell from world_rank - 1
-                MPI_Recv(
-                    lastCellReceive,
-                    3,
-                    MPI_INT,
-                    world_rank-1,
-                    0,
-                    MPI_COMM_WORLD,
-                    MPI_STATUS_IGNORE
-                )
-                // MPI_Send first cell to world_rank - 1
-                firstCellSend[0] = initialX;
-                firstCellSend[1] = initialY;
-                firstCellSend[2] = dp[initialX][initialY];
-                MPI_Send(
-                    firstCellSend,   //data
-                    3,               //count
-                    MPI_INT,         //datatype,
-                    world_rank-1,    //destination,
-                    0,               //tag
-                    MPI_COMM_WORLD   //comm
-                );
-            }
-        } else {                                                            // odd rank
-            if (world_rank > 0) {                                           // not first process
-                // MPI_Recv last cell from world_rank - 1
-                MPI_Recv(
-                    lastCellReceive,
-                    3,
-                    MPI_INT,
-                    world_rank-1,
-                    0,
-                    MPI_COMM_WORLD,
-                    MPI_STATUS_IGNORE
-                );
-                // MPI_Send first cell to world_rank - 1
-                firstCellSend[0] = initialX;
-                firstCellSend[1] = initialY;
-                firstCellSend[2] = dp[initialX][initialY];
-                MPI_Send(
-                    firstCellSend,   //data
-                    3,               //count
-                    MPI_INT,         //datatype,
-                    world_rank-1,    //destination,
-                    0,               //tag
-                    MPI_COMM_WORLD   //comm
-                );
-            }
-            if (world_rank < world_size - 1) {                              // not last process
-                // MPI_Send last cell to world_rank + 1
-                lastCellSend[0] = finalX;
-                lastCellSend[1] = finalY;
-                lastCellSend[2] = dp[finalX][finalY];
-                MPI_Send(
-                    lastCellSend,    //data
-                    3,               //count
-                    MPI_INT,         //datatype,
-                    world_rank+1,    //destination,
-                    0,               //tag
-                    MPI_COMM_WORLD   //comm
-                );
-                // MPI_Recv first cell from world_rank + 1
-                MPI_Recv(
-                    firstCellReceive,
-                    3,
-                    MPI_INT,
-                    world_rank+1,
-                    0,
-                    MPI_COMM_WORLD,
-                    MPI_STATUS_IGNORE
-                );                
-            }
-        }
-
-        // need to check that we arent filling row 0 or col 0, those values are always supposed to equal 0
-        if (firstCellReceive[0] != 0 && firstCellReceive[1] != 0) {
-            int firstCellX = firstCellReceive[0];
-            int firstCellY = firstCellReceive[1];
-            dp[firstCellX][firstCellY] = firstCellReceive[2];
-        }        
-
-        if (lastCellReceive[0] != 0 && lastCellReceive[1] != 0) {
-            int lastCellX = lastCellReceive[0];
-            int lastCellY = lastCellReceive[1];
-            dp[lastCellX][lastCellY] = lastCellReceive[2];
-        }
+        std::fill(lastCellReceive, lastCellReceive + 3, 0);
+        std::fill(firstCellReceive, firstCellReceive + 3, 0);
+        std::fill(lastCellSend, lastCellSend + 3, 0);
+        std::fill(firstCellSend, firstCellSend + 3, 0);
         
-        delete[] lastCellReceive;
-        delete[] firstCellReceive;
-        delete[] lastCellSend;
-        delete[] firstCellSend;
+        int world_size_2;
 
-        //MPI_Barrier(MPI_COMM_WORLD); probably dont need barrier with synchronized sends/recv
+        if (elementsInDiagonal < world_size) {
+            world_size_2 = elementsInDiagonal;
+        } else {
+            world_size_2 = world_size;
+        }
+
+        if (world_rank < world_size_2) {
+            if (world_rank % 2 == 0) {                                          // even rank
+                if (world_rank < world_size_2 - 1) {                              // not last process
+                    // MPI_Send last cell to world_rank + 1
+                    lastCellSend[0] = finalX;
+                    lastCellSend[1] = finalY;
+                    lastCellSend[2] = dp[finalX][finalY];
+                    // if(world_rank == PRINT_TASK) printf("SENDING lastCellSend TO WORLD_RANK + 1: (%d, %d, %d)\n", lastCellSend[0], lastCellSend[1], lastCellSend[2]);
+                    MPI_Send(
+                        lastCellSend,    //data
+                        3,               //count
+                        MPI_INT,         //datatype,
+                        world_rank+1,    //destination,
+                        0,               //tag
+                        MPI_COMM_WORLD   //comm
+                    );
+                    // if (world_rank == PRINT_TASK) printf("DONE SENDING lastCellSend TO WORLD_RANK + 1\n");
+                    // MPI_Recv first cell from world_rank + 1
+                    // if(world_rank == PRINT_TASK) printf("RECEIVING firstCellReceive FROM WORLD_RANK + 1\n");
+                    MPI_Recv(
+                        firstCellReceive, //data,
+                        3,                       //count,
+                        MPI_INT,                 //datatype,
+                        world_rank+1,            //source,
+                        0,            //tag,
+                        MPI_COMM_WORLD,   //communicator,
+                        MPI_STATUS_IGNORE //status
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE RECEIVING firstCellReceive FROM WORLD_RANK + 1: (%d, %d, %d)\n", firstCellReceive[0], firstCellReceive[1], firstCellReceive[2]);
+                }
+                if (world_rank > 0) {                                           // not first process
+                    // MPI_Recv last cell from world_rank - 1
+                    // if(world_rank == PRINT_TASK) printf("RECEIVING lastCellReceive FROM WORLD_RANK - 1\n");
+                    MPI_Recv(
+                        lastCellReceive,
+                        3,
+                        MPI_INT,
+                        world_rank-1,
+                        0,
+                        MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE RECEIVING lastCellReceive FROM WORLD_RANK - 1: (%d, %d, %d)\n", lastCellReceive[0], lastCellReceive[1], lastCellReceive[2]);
+                    
+                    // MPI_Send first cell to world_rank - 1
+                    firstCellSend[0] = initialX;
+                    firstCellSend[1] = initialY;
+                    firstCellSend[2] = dp[initialX][initialY];
+                    // if(world_rank == PRINT_TASK) printf("SENDING firstCellSend TO WORLD_RANK - 1: (%d, %d, %d)\n", firstCellSend[0], firstCellSend[1], firstCellSend[2]);
+                    MPI_Send(
+                        firstCellSend,   //data
+                        3,               //count
+                        MPI_INT,         //datatype,
+                        world_rank-1,    //destination,
+                        0,               //tag
+                        MPI_COMM_WORLD   //comm
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE SENDING firstCellSend TO WORLD_RANK - 1\n");
+                }
+            } else {                                                            // odd rank
+                if (world_rank > 0) {                                           // not first process
+                    // MPI_Recv last cell from world_rank - 1
+                    // if(world_rank == PRINT_TASK) printf("RECEIVING lastCellReceive FROM WORLD_RANK - 1\n");
+                    MPI_Recv(
+                        lastCellReceive,
+                        3,
+                        MPI_INT,
+                        world_rank-1,
+                        0,
+                        MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE RECEIVING lastCellReceive FROM WORLD_RANK - 1: (%d, %d, %d)\n", lastCellReceive[0], lastCellReceive[1], lastCellReceive[2]);
+                    // MPI_Send first cell to world_rank - 1
+                    firstCellSend[0] = initialX;
+                    firstCellSend[1] = initialY;
+                    firstCellSend[2] = dp[initialX][initialY];
+                    // if(world_rank == PRINT_TASK) printf("SENDING firstCellSend TO WORLD_RANK - 1: (%d, %d, %d)\n", firstCellSend[0], firstCellSend[1], firstCellSend[2]);
+                    MPI_Send(
+                        firstCellSend,   //data
+                        3,               //count
+                        MPI_INT,         //datatype,
+                        world_rank-1,    //destination,
+                        0,               //tag
+                        MPI_COMM_WORLD   //comm
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE SENDING firstCellSend TO WORLD_RANK - 1\n");
+                    
+                }
+                if (world_rank < world_size_2 - 1) {                              // not last process
+                    // MPI_Send last cell to world_rank + 1
+                    lastCellSend[0] = finalX;
+                    lastCellSend[1] = finalY;
+                    lastCellSend[2] = dp[finalX][finalY];
+                    // if(world_rank == PRINT_TASK) printf("SENDING lastCellSend TO WORLD_RANK + 1: (%d, %d, %d)\n", lastCellSend[0], lastCellSend[1], lastCellSend[2]);
+                    MPI_Send(
+                        lastCellSend,    //data
+                        3,               //count
+                        MPI_INT,         //datatype,
+                        world_rank+1,    //destination,
+                        0,               //tag
+                        MPI_COMM_WORLD   //comm
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE SENDING lastCellSend TO WORLD_RANK + 1\n");
+                    // MPI_Recv first cell from world_rank + 1
+                    // if(world_rank == PRINT_TASK) printf("RECEIVING firstCellReceive FROM WORLD_RANK + 1\n");
+                    MPI_Recv(
+                        firstCellReceive,
+                        3,
+                        MPI_INT,
+                        world_rank+1,
+                        0,
+                        MPI_COMM_WORLD,
+                        MPI_STATUS_IGNORE
+                    );
+                    // if(world_rank == PRINT_TASK) printf("DONE RECEIVING firstCellReceive FROM WORLD_RANK + 1: (%d, %d, %d)\n", firstCellReceive[0], firstCellReceive[1], firstCellReceive[2]);             
+                }
+            }
+
+            // if (world_rank == PRINT_TASK) {
+            //     printf("UPDATE DP\n");
+            //     printf("changing dp[%d][%d] to %d\n", firstCellReceive[0], firstCellReceive[1], firstCellReceive[2]);
+            //     printf("changing dp[%d][%d] to %d\n", lastCellReceive[0], lastCellReceive[1], lastCellReceive[2]);
+            // }
+
+            // need to check that we arent filling row 0 or col 0, those values are always supposed to equal 0
+            if (firstCellReceive[0] != 0 && firstCellReceive[1] != 0) {
+                int firstCellX = firstCellReceive[0];
+                int firstCellY = firstCellReceive[1];
+                dp[firstCellX][firstCellY] = firstCellReceive[2];
+            }        
+
+            if (lastCellReceive[0] != 0 && lastCellReceive[1] != 0) {
+                int lastCellX = lastCellReceive[0];
+                int lastCellY = lastCellReceive[1];
+                dp[lastCellX][lastCellY] = lastCellReceive[2];
+            }
+            // if (world_rank == PRINT_TASK) printf("DELETE INT[3]\n");
+            delete[] lastCellReceive;
+            delete[] firstCellReceive;
+            delete[] lastCellSend;
+            delete[] firstCellSend;
+            // if (world_rank == PRINT_TASK) printf("DONE DELETE INT[3]\n");
+        }
+        MPI_Barrier(MPI_COMM_WORLD); //probably dont need barrier with synchronized sends/recv
+        // if (world_rank == PRINT_TASK) printf("END DIAGONAL %d\n", i);
 
     } // END OF DIAGONALS LOOP
 
@@ -259,11 +306,9 @@ void findLCS(const string& X, const string& Y, ProcessData& processData, int wor
     // --------------------------------------------------------------
     processData.timeTaken = t1.stop();
 
-    // free dp table
-    for (int i = 0; i < (n + 1); i++) {
-        delete[] dp[i];
+    if (world_rank == 0) {
+        printf("Last element of DP table: %d\n", dp[n][m]);
     }
-    delete[] dp;
 
     return;
 }
@@ -273,20 +318,12 @@ int main(int argc, char** argv) {
     cxxopts::Options options("lcs", "Find longest common subsequence.");
     options.add_options(
         "",
-        { 
-            { "t", "Number of processes", cxxopts::value<uint>()->default_value(DEFAULT_PROCESSES) },
+        {
             { "x", "1st sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_X) },
             { "y", "2nd sequence", cxxopts::value<string>()->default_value(DEFAULT_STRING_Y) },
         }
     );
     auto cli = options.parse(argc, argv);
-
-    // -t ignored in distributed
-    uint nProcesess = cli["t"].as<uint>();
-    if (LCS_VERSION == "serial" && nProcesess != 1) { // error when serial version > 1 process
-        printf("Error : Number of processes for serial version must be 1.\n");
-        return 1;
-    }
 
     string X = cli["x"].as<string>(); // sequence 1
     string Y = cli["y"].as<string>(); // sequence 2
@@ -303,7 +340,7 @@ int main(int argc, char** argv) {
 
     if (world_rank == 0) { // Print preface (from root)
         printf("LCS Version : %s\n", LCS_VERSION);
-        printf("Number of processes : %u\n", world_size);
+        printf("Number of processes : %d\n", world_size);
         printf("Sequence X : %s\n", X.c_str());
         printf("Sequence Y : %s\n", Y.c_str());
         printf("Finding longest common subsequence...\n");
