@@ -153,6 +153,10 @@ vector<string> findLCS(const string &X, const string &Y, vector<ThreadData> &thr
     // Start at endpoint and work backwards
     backtrack(n, m, "");
     // threadData[thread_id].timeTaken = t1.stop();
+
+    if (lcsSet.empty()) {
+        return {};  // Return an empty vector if no LCS exists
+    }
     
     // Return a vector that contains all LCS
     vector<string> result(lcsSet.begin(), lcsSet.end());
@@ -210,7 +214,6 @@ int main(int argc, char **argv) {
 
     // Print all found LCS sequences
     size_t nSubsequences = lcsResults.size();
-    std::cout << "hello" << nSubsequences << std::endl;
     if (nSubsequences > 0) {
         size_t lcsLength = lcsResults[0].size();
         printf("LCS length : %zd\n", lcsLength);

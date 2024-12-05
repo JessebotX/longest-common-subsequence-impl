@@ -4,7 +4,7 @@ MPICXX = mpic++
 CXXFLAGS = -std=c++14 -pthread -O3
 
 SERIAL = lcs_serial
-PARALLEL = lcs_parallel_test
+PARALLEL = lcs_parallel
 DISTRIBUTED = lcs_distributed
 ALL= $(SERIAL) $(PARALLEL) $(DISTRIBUTED)
 COMMON= common/utils.h common/cxxopts.h common/get_time.h
